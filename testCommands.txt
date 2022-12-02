@@ -1,1 +1,2 @@
 python enhancer.py ./src_img ./target_img 1 1.0 1.0 1.0 1
+python enhancer.py ./src_img ./target_img 1 2.3 2.0 8.3 1

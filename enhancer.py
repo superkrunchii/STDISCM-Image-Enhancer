@@ -20,9 +20,10 @@ import multiprocessing
 """
 # Enhancer Class
 class Enhancer(multiprocessing.Process):
-    def __init__(self, processID, src_imgs, dest_path, brightness, sharpness, contrast):
+    def __init__(self, processID, counter, src_imgs, dest_path, brightness, sharpness, contrast):
         multiprocessing.Process.__init__(self)
         self.id = processID
+        self.counter = counter
         self.brightness = brightness
         self.sharpness = sharpness
         self.contrast = contrast
@@ -36,13 +37,13 @@ class Enhancer(multiprocessing.Process):
         enhanced_img.save(dest + "/" + src_img[1][:src_img[1].rfind('.')] + "_enhanced." + src_img[1][src_img[1].rfind('.') + 1:], format)
     
     def run(self):
-        for img in self.src:
-            conv_img = img[0].convert("RGB")
+        for i in range(self.id, self.counter):
+            conv_img = self.src[i][0].convert("RGB")
             # Enhance brightness by given factor
-            bri = ImageEnhance.Brightness(conv_img).enhance(2)
-            con = ImageEnhance.Contrast(bri).enhance(8.3)
-            sharp = ImageEnhance.Sharpness(con).enhance(2.3)
-            self.create_img_file(img, sharp, self.dest)
+            bri = ImageEnhance.Brightness(conv_img).enhance(self.brightness)
+            con = ImageEnhance.Contrast(bri).enhance(self.contrast)
+            sharp = ImageEnhance.Sharpness(con).enhance(self.sharpness)
+            self.create_img_file(self.src[i], sharp, self.dest)
             
 
 if __name__ == "__main__":
@@ -76,7 +77,7 @@ if __name__ == "__main__":
         img = Image.open(os.path.join(src_path, f))
         src_imgs.append([img, img.filename[img.filename.rfind('\\') + 1:]])
     
-
-    p = Enhancer(1, src_imgs, dest_path, brightness,sharpness, contrast)
+    COUNT = len(src_imgs)
+    p = Enhancer(0, COUNT, src_imgs, dest_path, brightness, sharpness, contrast)
     p.start()
-    p.join(enhancing_time)
+    p.join(enhancing_time * 60)
