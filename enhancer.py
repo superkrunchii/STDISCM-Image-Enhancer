@@ -21,15 +21,16 @@ import time
 """
 # Enhancer Class
 class Enhancer(multiprocessing.Process):
-    def __init__(self, processID, n_images, src_imgs, dest_path, brightness, sharpness, contrast):
+    def __init__(self, processID, queue, n_images, dest_path, brightness, sharpness, contrast):
         multiprocessing.Process.__init__(self)
         self.id = processID
         self.n_images = n_images
         self.brightness = brightness
         self.sharpness = sharpness
         self.contrast = contrast
-        self.src = src_imgs
         self.dest = dest_path
+        self.queue = queue
+        self.imgs = []
 
     # Saves the image file to target directory
     def create_img_file(self, src_img, enhanced_img, dest):
@@ -39,13 +40,36 @@ class Enhancer(multiprocessing.Process):
     
     def run(self):
         for _ in range(self.n_images):
-            img = self.src.get()
+            print("process: ", self.id, "Enhancing Image")
+            img = self.queue.get()
+            self.imgs.append(img)
             conv_img = img[0].convert("RGB")
             # Enhance brightness by given factor
-            bri = ImageEnhance.Brightness(conv_img).enhance(2)
-            con = ImageEnhance.Contrast(bri).enhance(8.3)
-            sharp = ImageEnhance.Sharpness(con).enhance(2.3)
+            bri = ImageEnhance.Brightness(conv_img).enhance(self.brightness)
+            con = ImageEnhance.Contrast(bri).enhance(self.contrast)
+            sharp = ImageEnhance.Sharpness(con).enhance(self.sharpness)
             self.create_img_file(img, sharp, self.dest)
+        print("Process", self.id, "Enhanced Images: ", str(self.imgs))
+
+class Producer(multiprocessing.Process):
+    def __init__ (self, src_path, queue):
+        multiprocessing.Process.__init__(self)
+        self.image_list = []
+        self.queue = queue
+        self.src = src_path
+        self.valid_formats = [".jpg", ".gif", ".png"]
+    def run(self):
+        for f in os.listdir(self.src):
+            ext = os.path.splitext(f)[1]
+            if ext.lower() not in self.valid_formats:
+                continue
+            img = Image.open(os.path.join(self.src, f))
+            # src_imgs.append([img, img.filename[img.filename.rfind('\\') + 1:]])
+            self.queue.put([img, img.filename[img.filename.rfind('\\') + 1:]])
+            self.image_list.append([img, img.filename[img.filename.rfind('\\') + 1:]])
+        print("Produced Images: ", str(self.image_list))
+        
+
 
 def write_stats():
     pass
@@ -77,33 +101,26 @@ if __name__ == "__main__":
     #Create Queue
     queue = multiprocessing.Queue()
 
-    p_threads = []
-    count = 0
+    count = len([e for e in os.listdir(src_path) if os.path.isfile(os.path.join(src_path, e))])
+    print("number of images:", count)
+    n_images = int(count/n_threads)
+    
+    c_threads = []
+    
+    p = Producer(src_path, queue)
+    p.start()
 
-    # Import source pictures + get filename for organized output
-    src_imgs = []
-    valid_formats = [".jpg", ".gif", ".png"]
-    for f in os.listdir(src_path):
-        ext = os.path.splitext(f)[1]
-        if ext.lower() not in valid_formats:
-            continue
-        img = Image.open(os.path.join(src_path, f))
-        # src_imgs.append([img, img.filename[img.filename.rfind('\\') + 1:]])
-        queue.put([img, img.filename[img.filename.rfind('\\') + 1:]])
-        count += 1
-    
-    
-    print("count:", count)
-    n_images = count//n_threads
-    print("n_images", n_images)
 
     for i in range(n_threads):
-        p = Enhancer(i, n_images, queue, dest_path, brightness, sharpness, contrast)
-        p_threads.append(p)
-        p.start()
-
-    for p in p_threads:
-        p.join() 
+        if i == n_threads - 1:
+            n_images += count - (n_images * n_threads)
+        c = Enhancer(i, queue, n_images, dest_path, brightness, sharpness, contrast)
+        c_threads.append(c)
+        c.start()
+    p.join()
+    
+    for c in c_threads:
+        c.join(5) 
 
     end = time.time()
 
