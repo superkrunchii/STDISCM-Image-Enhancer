@@ -4,6 +4,7 @@ import os, os.path
 from argparse import ArgumentParser
 import multiprocessing
 import time
+import numpy as np
 
 """
     Input:
@@ -21,7 +22,7 @@ import time
 """
 # Enhancer Class
 class Enhancer(multiprocessing.Process):
-    def __init__(self, processID, queue, n_images, dest_path, brightness, sharpness, contrast):
+    def __init__(self, processID, queue, lock, manager, n_images, dest_path, brightness, sharpness, contrast):
         multiprocessing.Process.__init__(self)
         self.id = processID
         self.n_images = n_images
@@ -30,6 +31,8 @@ class Enhancer(multiprocessing.Process):
         self.contrast = contrast
         self.dest = dest_path
         self.queue = queue
+        self.lock = lock
+        self.counter = manager
         self.imgs = []
 
     # Saves the image file to target directory
@@ -40,7 +43,7 @@ class Enhancer(multiprocessing.Process):
     
     def run(self):
         for _ in range(self.n_images):
-            print("process: ", self.id, "Enhancing Image")
+            # print("process: ", self.id, "Enhancing Image")
             img = self.queue.get()
             self.imgs.append(img)
             conv_img = img[0].convert("RGB")
@@ -49,7 +52,10 @@ class Enhancer(multiprocessing.Process):
             con = ImageEnhance.Contrast(bri).enhance(self.contrast)
             sharp = ImageEnhance.Sharpness(con).enhance(self.sharpness)
             self.create_img_file(img, sharp, self.dest)
-        print("Process", self.id, "Enhanced Images: ", str(self.imgs))
+            self.lock.acquire()
+            self.counter.value+=1
+            self.lock.release()
+        # print("Process", self.id, "Enhanced Images: ", str(self.imgs))
 
 class Producer(multiprocessing.Process):
     def __init__ (self, src_path, queue):
@@ -64,19 +70,25 @@ class Producer(multiprocessing.Process):
             if ext.lower() not in self.valid_formats:
                 continue
             img = Image.open(os.path.join(self.src, f))
+            img_copy = img.copy()
+            img.close()
             # src_imgs.append([img, img.filename[img.filename.rfind('\\') + 1:]])
-            self.queue.put([img, img.filename[img.filename.rfind('\\') + 1:]])
-            self.image_list.append([img, img.filename[img.filename.rfind('\\') + 1:]])
-        print("Produced Images: ", str(self.image_list))
+            self.queue.put([img_copy, img.filename[img.filename.rfind('\\') + 1:]])
+            self.image_list.append([img_copy, img.filename[img.filename.rfind('\\') + 1:]])
+
+        # print("Produced Images: ", str(self.image_list))
         
 
 
-def write_stats():
-    pass
+def write_stats(count, numthreads, dest, run):
+    with open('stats.txt', 'w') as f:
+        f.write('Statistics:\n')
+        f.write(f'Total images enhanced in {run} minute/s with {numthreads} thread/s: {count}\n')
+        f.write(f'Output images stored in: {dest}\n')
 
 if __name__ == "__main__":
 
-    start = time.time()
+    run_start = time.time()
 
     # Parse Arguments
     parser = ArgumentParser()
@@ -98,31 +110,52 @@ if __name__ == "__main__":
     contrast = args.contrast
     n_threads = args.threads
 
-    #Create Queue
+    # Create Lock
+    shared_resource_lock = multiprocessing.Lock()
+    print("Lock Initialized")
+
+    # Create Queue
     queue = multiprocessing.Queue()
+    print("Queue Initialized")
+
+    # Create Manager
+    manager = multiprocessing.Manager()
+    shared_resource_counter = manager.Value('i',0)
+    print("Manager Initialized")
 
     count = len([e for e in os.listdir(src_path) if os.path.isfile(os.path.join(src_path, e))])
     print("number of images:", count)
     n_images = int(count/n_threads)
     
     c_threads = []
+    bools = [True]*n_images
     
+    # start timer on program start
+    c_time = time.time()
+
     p = Producer(src_path, queue)
     p.start()
-
 
     for i in range(n_threads):
         if i == n_threads - 1:
             n_images += count - (n_images * n_threads)
-        c = Enhancer(i, queue, n_images, dest_path, brightness, sharpness, contrast)
+        c = Enhancer(i, queue, shared_resource_lock,shared_resource_counter, n_images, dest_path, brightness, sharpness, contrast)
         c_threads.append(c)
         c.start()
+
+    while time.time() - c_time < enhancing_time * 60:
+        continue
+    else:
+        for c in c_threads:
+            c.terminate()
+        p.terminate()
+
     p.join()
-    
+
     for c in c_threads:
-        c.join(5) 
+        c.join()
 
-    end = time.time()
-
-    run_time = end - start
+    run_time = time.time() - c_time
+    write_stats(shared_resource_counter.value, n_threads, dest_path, enhancing_time)
+    print("Enhanced Images: ", shared_resource_counter.value)
     print("Execution time: ", run_time, "seconds")
