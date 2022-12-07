@@ -128,7 +128,6 @@ if __name__ == "__main__":
     n_images = int(count/n_threads)
     
     c_threads = []
-    bools = [True]*n_images
     
     # start timer on program start
     c_time = time.time()
