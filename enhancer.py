@@ -143,7 +143,7 @@ if __name__ == "__main__":
         c_threads.append(c)
         c.start()
 
-    while time.time() - c_time < enhancing_time * 10:
+    while time.time() - c_time < enhancing_time * 60:
         continue
     else:
         for c in c_threads:
