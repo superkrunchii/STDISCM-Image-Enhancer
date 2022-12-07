@@ -4,7 +4,6 @@ import os, os.path
 from argparse import ArgumentParser
 import multiprocessing
 import time
-import numpy as np
 
 """
     Input:
