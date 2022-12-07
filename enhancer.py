@@ -92,14 +92,15 @@ if __name__ == "__main__":
 
     # Parse Arguments
     parser = ArgumentParser()
-    parser.add_argument("src", type=str)
-    parser.add_argument("dest", type=str)
-    parser.add_argument("time", type=int)
-    parser.add_argument("brightness", type=float)
-    parser.add_argument("sharpness", type=float)
-    parser.add_argument("contrast", type=float)
-    parser.add_argument("threads", default=1, type=int)
+    parser.add_argument("-s", "--src", type=str, required=True, help="Source Image Folder")
+    parser.add_argument("-d","--dest", type=str, required=True, help="Destination Folder")
+    parser.add_argument("-tm", "--time",type=int, required=True, help="Image Enhancing Time")
+    parser.add_argument("-b", "--brightness", type=float, required=True, help="Image Brightness Ratio")
+    parser.add_argument("-sh", "--sharpness", type=float, required=True, help="Image Sharpness Ratio")
+    parser.add_argument("-c", "--contrast", type=float, required=True, help="Image Contrast Ratio")
+    parser.add_argument("-t", "--threads", default=1, type=int, required=False, help="(Optional) Number of Enhancement Threads")
     args = parser.parse_args()
+
 
     # Store Arguments
     src_path = args.src
@@ -143,7 +144,7 @@ if __name__ == "__main__":
         c_threads.append(c)
         c.start()
 
-    while time.time() - c_time < enhancing_time * 60:
+    while time.time() - c_time < enhancing_time * 10:
         continue
     else:
         for c in c_threads:

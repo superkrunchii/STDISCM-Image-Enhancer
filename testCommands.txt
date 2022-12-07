@@ -1,1 +1,1 @@
-python enhancer.py ./src_img ./target_img 1 1.0 1.0 1.0 1
+python enhancer.py -s ./src_img -d ./target_img -tm 1 -b 1.0 -sh 1.0 -c 1.0 -t 1
