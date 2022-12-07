@@ -93,7 +93,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-s", "--src", type=str, required=True, help="Source Image Folder")
     parser.add_argument("-d","--dest", type=str, required=True, help="Destination Folder")
-    parser.add_argument("-tm", "--time",type=int, required=True, help="Image Enhancing Time")
+    parser.add_argument("-tm", "--time",type=float, required=True, help="Image Enhancing Time")
     parser.add_argument("-b", "--brightness", type=float, required=True, help="Image Brightness Ratio")
     parser.add_argument("-sh", "--sharpness", type=float, required=True, help="Image Sharpness Ratio")
     parser.add_argument("-c", "--contrast", type=float, required=True, help="Image Contrast Ratio")
