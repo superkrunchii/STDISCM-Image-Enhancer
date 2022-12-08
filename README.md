@@ -23,7 +23,7 @@ Using a CLI:
 1. Clone the repository
 
 ```
-git clone https://github.com/DLSU-CCAPDEV/2021T2-G05.git
+git clone https://github.com/superkrunchii/STDISCM-Image-Enhancer.git
 ```
 
 2. Run the program given the required arguments
