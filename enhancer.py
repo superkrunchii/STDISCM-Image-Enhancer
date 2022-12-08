@@ -79,8 +79,8 @@ class Producer(multiprocessing.Process):
         
 
 
-def write_stats(count, numthreads, dest, run):
-    with open('stats.txt', 'w') as f:
+def write_stats(count, numthreads, dest, run, output):
+    with open(output, 'w') as f:
         f.write('Statistics:\n')
         f.write(f'Total images enhanced in {run} minute/s with {numthreads} thread/s: {count}\n')
         f.write(f'Output images stored in: {dest}\n')
@@ -98,6 +98,7 @@ if __name__ == "__main__":
     parser.add_argument("-sh", "--sharpness", type=float, required=True, help="Image Sharpness Ratio")
     parser.add_argument("-c", "--contrast", type=float, required=True, help="Image Contrast Ratio")
     parser.add_argument("-t", "--threads", default=1, type=int, required=False, help="(Optional) Number of Enhancement Threads")
+    parser.add_argument("-o", "--output", default="stats.txt", type=str, required=False, help="(Optional) Output Filename")
     args = parser.parse_args()
 
 
@@ -109,7 +110,9 @@ if __name__ == "__main__":
     sharpness = args.sharpness
     contrast = args.contrast
     n_threads = args.threads
+    output = args.output
 
+    print("BULK IMAGE ENHANCER V1")
     # Create Lock
     shared_resource_lock = multiprocessing.Lock()
     print("Lock Initialized")
@@ -123,8 +126,10 @@ if __name__ == "__main__":
     shared_resource_counter = manager.Value('i',0)
     print("Manager Initialized")
 
+    print("Number of Enhancing Threads: ", n_threads)
+    print("Enhancement Time: ", enhancing_time, "minutes")
     count = len([e for e in os.listdir(src_path) if os.path.isfile(os.path.join(src_path, e))])
-    print("number of images:", count)
+    print("Number of images:", count)
     n_images = int(count/n_threads)
     
     c_threads = []
@@ -132,9 +137,11 @@ if __name__ == "__main__":
     # start timer on program start
     c_time = time.time()
 
+    print("Loading Images...")
     p = Producer(src_path, queue)
     p.start()
 
+    print("Enhancing Images...")
     for i in range(n_threads):
         if i == n_threads - 1:
             n_images += count - (n_images * n_threads)
@@ -155,6 +162,7 @@ if __name__ == "__main__":
         c.join()
 
     run_time = time.time() - c_time
-    write_stats(shared_resource_counter.value, n_threads, dest_path, enhancing_time)
+    write_stats(shared_resource_counter.value, n_threads, dest_path, enhancing_time, output)
     print("Enhanced Images: ", shared_resource_counter.value)
     print("Execution time: ", run_time, "seconds")
+    print("Program Statistics Saved At: ", output)
