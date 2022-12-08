@@ -1,0 +1,3 @@
+Statistics:
+Total images enhanced in 0.5 minute/s with 1 thread/s: 17164
+Output images stored in: ./target_img
